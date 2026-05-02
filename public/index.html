@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mapper</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>🗺</text></svg>" />
+</head>
+<body>
+<div id="app">
+
+  <!-- nav -->
+  <nav>
+    <div class="nav-logo" onclick="goPage('browse')">mapper</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-page="browse" onclick="goPage('browse')">browse</button>
+      <button class="nav-tab" data-page="trending" onclick="goPage('trending')">trending</button>
+      <button class="nav-tab" id="nav-dash" data-page="dashboard" onclick="goPage('dashboard')" style="display:none">my maps</button>
+    </div>
+    <div class="nav-right">
+      <div id="nav-auth-btns">
+        <button class="btn-ghost" onclick="openModal('login')">sign in</button>
+        <button class="btn-primary" onclick="openModal('register')">join</button>
+      </div>
+      <div id="nav-user" style="display:none">
+        <button class="btn-ghost" id="nav-username-btn" onclick="goPage('dashboard')"></button>
+        <button class="btn-ghost" onclick="logout()">sign out</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- pages -->
+
+  <!-- browse -->
+  <div class="page active" id="page-browse">
+    <div class="browse-header">
+      <h1>public roadmaps</h1>
+      <p>explore what others are building and planning</p>
+      <div class="browse-controls">
+        <div class="search-wrap">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="browse-search" placeholder="search roadmaps..." oninput="debouncedSearch()" />
+        </div>
+        <div class="sort-tabs">
+          <button class="sort-tab active" data-sort="recent" onclick="setSort('recent')">recent</button>
+          <button class="sort-tab" data-sort="likes" onclick="setSort('likes')">top</button>
+          <button class="sort-tab" data-sort="trending" onclick="setSort('trending')">trending</button>
+        </div>
+      </div>
+    </div>
+    <div class="cards-grid" id="browse-grid">
+      <div class="empty-state">loading...</div>
+    </div>
+    <div class="pagination" id="browse-pagination"></div>
+  </div>
+
+  <!-- trending -->
+  <div class="page" id="page-trending">
+    <div class="trending-wrap">
+      <div class="trending-header">
+        <h2>trending</h2>
+        <span>the most popular maps right now</span>
+      </div>
+      <div class="trending-list" id="trending-list">
+        <div class="empty-state">loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- dashboard -->
+  <div class="page" id="page-dashboard">
+    <div class="dashboard-wrap">
+      <div class="dash-header">
+        <h2>my roadmaps</h2>
+        <button class="btn-primary" onclick="openModal('create-roadmap')">+ new map</button>
+      </div>
+      <div class="my-roadmaps" id="my-roadmaps-list">
+        <div class="empty-state">sign in to see your maps</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- editor -->
+  <div class="page" id="page-editor">
+    <div class="editor-wrap">
+      <div class="editor-topbar">
+        <button class="btn-icon" onclick="goPage('dashboard')" title="back">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <input class="editor-title-input" id="editor-title" type="text" value="untitled roadmap" onblur="saveTitle()" onkeydown="if(event.key==='Enter')this.blur()" />
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-left:0.5rem">
+          <label style="font-size:0.75rem;color:var(--text2)">public</label>
+          <label class="toggle-wrap" style="position:relative;width:34px;height:18px;cursor:pointer">
+            <input type="checkbox" id="editor-public" style="opacity:0;width:0;height:0;position:absolute" onchange="saveVisibility()" />
+            <span id="toggle-track" style="position:absolute;inset:0;border-radius:9px;background:var(--bg4);border:1px solid var(--border);transition:.2s"></span>
+            <span id="toggle-thumb" style="position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--text3);transition:.2s"></span>
+          </label>
+        </div>
+        <div class="editor-actions">
+          <button class="btn-ghost" onclick="openModal('manage-collabs')">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            collabs
+          </button>
+          <button class="btn-ghost" id="analytics-btn" onclick="openAnalytics()" style="display:none">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            analytics
+          </button>
+          <button class="btn-primary" onclick="saveRoadmap()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            save
+          </button>
+        </div>
+      </div>
+      <div class="canvas-area" id="canvas-area">
+        <svg class="canvas-svg" id="canvas-svg"></svg>
+        <div class="canvas-nodes" id="canvas-nodes"></div>
+        <div class="editor-toolbar" id="editor-toolbar">
+          <button class="tool-btn active" id="tool-select" onclick="setTool('select')" title="select">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m4 4 7 18 3-7 7-3z"/></svg>
+            select
+          </button>
+          <div class="tool-sep"></div>
+          <button class="tool-btn" onclick="addNode('task')" title="add task node">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            task
+          </button>
+          <button class="tool-btn" onclick="addNode('milestone')" title="add milestone">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            milestone
+          </button>
+          <button class="tool-btn" onclick="addNode('section')" title="add section">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            section
+          </button>
+          <button class="tool-btn" onclick="addNode('done')" title="add done">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            done
+          </button>
+          <button class="tool-btn" onclick="addNode('warning')" title="add warning">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            note
+          </button>
+          <div class="tool-sep"></div>
+          <button class="tool-btn" onclick="deleteSelected()" title="delete selected" style="color:var(--red)">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            delete
+          </button>
+        </div>
+        <div class="node-panel" id="node-panel">
+          <h4>edit node</h4>
+          <div class="field">
+            <label>label</label>
+            <input type="text" id="np-label" oninput="updateSelectedNode()" placeholder="node label" />
+          </div>
+          <div class="field">
+            <label>description</label>
+            <textarea id="np-desc" rows="3" oninput="updateSelectedNode()" placeholder="optional details"></textarea>
+          </div>
+          <div class="field">
+            <label>date</label>
+            <input type="date" id="np-date" oninput="updateSelectedNode()" />
+          </div>
+          <div class="field">
+            <label>type</label>
+            <select id="np-type" onchange="updateSelectedNode()">
+              <option value="task">task</option>
+              <option value="milestone">milestone</option>
+              <option value="section">section</option>
+              <option value="done">done</option>
+              <option value="warning">note / warning</option>
+            </select>
+          </div>
+          <button class="btn-danger" style="width:100%;margin-top:0.5rem" onclick="deleteSelected()">delete node</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- roadmap view (public) -->
+  <div class="page" id="page-roadmap-view">
+    <div class="roadmap-view-wrap">
+      <div class="rv-header">
+        <div style="font-size:0.78rem;color:var(--text3);margin-bottom:0.7rem">
+          <span style="cursor:pointer;color:var(--text2)" onclick="goPage('browse')">browse</span>
+          <span style="margin:0 0.4rem">›</span>
+          <span id="rv-owner-link" style="cursor:pointer;color:var(--cream3)"></span>
+        </div>
+        <div class="rv-title" id="rv-title"></div>
+        <div class="rv-meta">
+          <span id="rv-by"></span>
+          <span id="rv-nodes-count"></span>
+          <span id="rv-updated"></span>
+          <span id="rv-forked-from" style="display:none">
+            forked from <span id="rv-fork-link" style="cursor:pointer;color:var(--cream3)"></span>
+          </span>
+        </div>
+        <div id="rv-tags" style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.6rem"></div>
+        <div class="rv-actions">
+          <button class="btn-icon like-btn" id="like-btn" onclick="toggleLike()">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span id="like-count">0</span>
+          </button>
+          <button class="btn-ghost" id="fork-btn" onclick="forkRoadmap()" style="display:none">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            fork <span id="fork-count" style="margin-left:0.2rem;color:var(--text3)"></span>
+          </button>
+          <button class="btn-ghost" id="edit-rv-btn" onclick="editCurrentRoadmap()" style="display:none">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            edit
+          </button>
+        </div>
+      </div>
+
+      <div class="rv-canvas" id="rv-canvas">
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1" id="rv-svg"></svg>
+        <div style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:2" id="rv-nodes"></div>
+      </div>
+
+      <div class="comments-section">
+        <h3>comments (<span id="comment-count">0</span>)</h3>
+        <div id="comment-form-wrap" style="display:none">
+          <div class="comment-form">
+            <textarea id="comment-input" placeholder="add a comment..." rows="2"></textarea>
+            <button class="btn-primary" onclick="postComment()">post</button>
+          </div>
+        </div>
+        <div id="comments-list" class="comment-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- analytics -->
+  <div class="page" id="page-analytics">
+    <div class="analytics-wrap">
+      <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:1.5rem">
+        <button class="btn-icon" onclick="goPage('editor')">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <h2 style="margin:0">analytics</h2>
+      </div>
+      <div class="stat-grid" id="stat-grid"></div>
+      <p style="font-size:0.78rem;color:var(--text3)">analytics reset on each server restart. persistent tracking coming soon.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- modals -->
+
+<!-- login -->
+<div class="modal-overlay" id="modal-login" onclick="closeModal('login')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>sign in</h2>
+    <div class="field"><label>username</label><input type="text" id="login-username" placeholder="your username" /></div>
+    <div class="field"><label>password</label><input type="password" id="login-password" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()" /></div>
+    <div class="error-msg" id="login-error"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('login');openModal('register')">create account</button>
+      <button class="btn-primary" onclick="doLogin()">sign in</button>
+    </div>
+  </div>
+</div>
+
+<!-- register -->
+<div class="modal-overlay" id="modal-register" onclick="closeModal('register')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>create account</h2>
+    <div class="field"><label>username</label><input type="text" id="reg-username" placeholder="3–20 chars, letters/numbers/_" /></div>
+    <div class="field"><label>email</label><input type="email" id="reg-email" placeholder="you@example.com" /></div>
+    <div class="field"><label>password</label><input type="password" id="reg-password" placeholder="at least 6 chars" onkeydown="if(event.key==='Enter')doRegister()" /></div>
+    <div class="error-msg" id="reg-error"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('register');openModal('login')">sign in instead</button>
+      <button class="btn-primary" onclick="doRegister()">create account</button>
+    </div>
+  </div>
+</div>
+
+<!-- create roadmap -->
+<div class="modal-overlay" id="modal-create-roadmap" onclick="closeModal('create-roadmap')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>new roadmap</h2>
+    <div class="field"><label>title</label><input type="text" id="cr-title" placeholder="what are you mapping?" /></div>
+    <div class="field"><label>description</label><textarea id="cr-desc" rows="3" placeholder="brief description (optional)"></textarea></div>
+    <div class="field"><label>tags (comma separated)</label><input type="text" id="cr-tags" placeholder="design, product, q4…" /></div>
+    <div class="field" style="flex-direction:row;align-items:center;gap:0.7rem">
+      <input type="checkbox" id="cr-public" style="width:auto" />
+      <label style="color:var(--text);font-size:0.85rem">make public</label>
+    </div>
+    <div class="error-msg" id="cr-error"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('create-roadmap')">cancel</button>
+      <button class="btn-primary" onclick="doCreateRoadmap()">create</button>
+    </div>
+  </div>
+</div>
+
+<!-- manage collabs -->
+<div class="modal-overlay" id="modal-manage-collabs" onclick="closeModal('manage-collabs')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>collaborators</h2>
+    <div id="collabs-owner-section">
+      <div class="field">
+        <label>add by username</label>
+        <div style="display:flex;gap:0.5rem">
+          <input type="text" id="collab-username-input" placeholder="username" />
+          <button class="btn-primary" onclick="addCollab()" style="white-space:nowrap;flex-shrink:0">add</button>
+        </div>
+      </div>
+      <div class="collabs-list" id="collabs-list"></div>
+    </div>
+    <div class="error-msg" id="collab-error"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('manage-collabs')">done</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
